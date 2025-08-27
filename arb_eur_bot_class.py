@@ -189,6 +189,7 @@ class ArbBot:
 
 if __name__ == "__main__":
     bot = ArbBot()
+    
     try:
         asyncio.run(bot.run())
     except KeyboardInterrupt:
