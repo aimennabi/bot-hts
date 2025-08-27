@@ -1,2 +1,2 @@
-python-binance==1.0.15
+python-binance==1.0.19
 aiohttp
