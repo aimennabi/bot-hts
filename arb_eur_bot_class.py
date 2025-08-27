@@ -6,6 +6,29 @@ from typing import Dict, List, Tuple
 
 import aiohttp
 from binance import AsyncClient, BinanceSocketManager
+from decimal import ROUND_DOWN  # <-- ajoute ceci à côté de Decimal
+
+def round_step(qty: Decimal, step: Decimal) -> Decimal:
+    # arrondit vers le bas au multiple de step
+    return (qty / step).to_integral_value(rounding=ROUND_DOWN) * step
+
+def extract_filters(info, symbol):
+    # récupère LOT_SIZE.stepSize / minQty et (MIN_)NOTIONAL.minNotional
+    for s in info["symbols"]:
+        if s["symbol"] == symbol:
+            f = {f["filterType"]: f for f in s["filters"]}
+            step = Decimal(f["LOT_SIZE"]["stepSize"]) if "LOT_SIZE" in f else Decimal("0.00000001")
+            min_qty = Decimal(f["LOT_SIZE"]["minQty"]) if "LOT_SIZE" in f else Decimal("0")
+            if "MIN_NOTIONAL" in f:
+                min_notional = Decimal(f["MIN_NOTIONAL"]["minNotional"])
+            elif "NOTIONAL" in f:
+                min_notional = Decimal(f["NOTIONAL"]["minNotional"])
+            else:
+                min_notional = Decimal("0")
+            return step, min_qty, min_notional
+    # fallback
+    return Decimal("0.00000001"), Decimal("0"), Decimal("0")
+
 
 
 class ArbBot:
@@ -37,6 +60,7 @@ class ArbBot:
         """Initialise client, fetch pairs and balances."""
         self.client = await AsyncClient.create(self.api_key, self.api_secret)
         self.bsm = BinanceSocketManager(self.client)
+        self.exchange_info = await self.client.get_exchange_info()
         await self.fetch_pairs()
         balance = await self.client.get_asset_balance(asset="EUR")
         self.balance_eur = Decimal(balance["free"])
@@ -124,6 +148,27 @@ class ArbBot:
     ) -> None:
         """Execute or simulate a profitable cycle."""
         async with self.in_trade:
+            # --- Vérifs filtres Binance pour éviter -1013 NOTIONAL ---
+            p1, p2, p3 = (self.prices[s] for s in cycle)
+            # 1er ordre (BUY, quote = EUR)
+            step1, min_qty1, min_notional1 = extract_filters(self.exchange_info, cycle[0])
+            if self.balance_eur < (min_notional1 * Decimal("1.02")):  # marge 2%
+                logging.info("Skip cycle %s: notional too low for %s", cycle, cycle[0])
+                return
+
+            # 2e ordre (BUY, quote = A -> amount_a)
+            step2, min_qty2, min_notional2 = extract_filters(self.exchange_info, cycle[1])
+            if amount_a < (min_notional2 * Decimal("1.02")):
+                logging.info("Skip cycle %s: notional too low for %s", cycle, cycle[1])
+                return
+
+            # 3e ordre (SELL, quantity = B -> arrondi au step)
+            step3, min_qty3, min_notional3 = extract_filters(self.exchange_info, cycle[2])
+            sell_qty = round_step(amount_b, step3)
+            if sell_qty < min_qty3 or (sell_qty * p3) < (min_notional3 * Decimal("1.02")):
+                logging.info("Skip cycle %s: notional too low for %s (after rounding)", cycle, cycle[2])
+                return
+            #        ----------------------------------------------------------
             if not self.dry_run and self.client:
                 try:
                     await self.client.create_order(
@@ -142,7 +187,7 @@ class ArbBot:
                         symbol=cycle[2],
                         side="SELL",
                         type="MARKET",
-                        quantity=str(amount_b),
+                        quantity=str(sell_qty),
                     )
                 except Exception as exc:  # pragma: no cover - network issue
                     logging.error("Trade execution failed: %s", exc)
@@ -189,7 +234,7 @@ class ArbBot:
 
 if __name__ == "__main__":
     bot = ArbBot()
-    
+
     try:
         asyncio.run(bot.run())
     except KeyboardInterrupt:
