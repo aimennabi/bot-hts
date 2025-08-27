@@ -29,6 +29,11 @@ def extract_filters(info, symbol):
     # fallback
     return Decimal("0.00000001"), Decimal("0"), Decimal("0")
 
+def get_quote_asset(info, symbol: str) -> str:
+    for s in info["symbols"]:
+        if s["symbol"] == symbol:
+            return s["quoteAsset"]
+    return "QUOTE"
 
 
 class ArbBot:
@@ -151,22 +156,26 @@ class ArbBot:
             # --- Vérifs filtres Binance pour éviter -1013 NOTIONAL ---
             p1, p2, p3 = (self.prices[s] for s in cycle)
             # 1er ordre (BUY, quote = EUR)
+    
+            quote1 = get_quote_asset(self.exchange_info, cycle[0])
             step1, min_qty1, min_notional1 = extract_filters(self.exchange_info, cycle[0])
             if self.balance_eur < (min_notional1 * Decimal("1.02")):  # marge 2%
-                logging.info("Skip cycle %s: notional too low for %s", cycle, cycle[0])
+                logging.info("Skip cycle %s: notional too low for %s. required >= %s, %s", cycle, cycle[0],min_notional1, quote1)
                 return
 
             # 2e ordre (BUY, quote = A -> amount_a)
+            quote2 = get_quote_asset(self.exchange_info, cycle[1])
             step2, min_qty2, min_notional2 = extract_filters(self.exchange_info, cycle[1])
             if amount_a < (min_notional2 * Decimal("1.02")):
-                logging.info("Skip cycle %s: notional too low for %s", cycle, cycle[1])
+                logging.info("Skip cycle %s: notional too low for %s. required >= %s, %s", cycle, cycle[1],min_notional2, quote2)
                 return
 
             # 3e ordre (SELL, quantity = B -> arrondi au step)
+            quote3 = get_quote_asset(self.exchange_info, cycle[2])
             step3, min_qty3, min_notional3 = extract_filters(self.exchange_info, cycle[2])
             sell_qty = round_step(amount_b, step3)
             if sell_qty < min_qty3 or (sell_qty * p3) < (min_notional3 * Decimal("1.02")):
-                logging.info("Skip cycle %s: notional too low for %s (after rounding)", cycle, cycle[2])
+                logging.info("Skip cycle %s: notional too low for %s (after rounding).required >= %s, %s ", cycle, cycle[2],min_notional3, quote3)
                 return
             #        ----------------------------------------------------------
             if not self.dry_run and self.client:
