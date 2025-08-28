@@ -2,13 +2,14 @@
 
 Ce dépôt contient un bot d'arbitrage triangulaire pour Binance.
 
-
 ## Utilisation
 
 1. Installer les dépendances :
+
    ```bash
    pip install -r requirements.txt
    ```
+
 2. Définir les variables d'environnement nécessaires :
 
    Exporter les clés dans votre terminal avant de lancer le bot :
@@ -24,6 +25,7 @@ Ce dépôt contient un bot d'arbitrage triangulaire pour Binance.
 
    Dans GitHub Actions, ajoutez ces mêmes variables comme secrets via **Settings > Secrets and variables > Actions** pour permettre au workflow de déployer le bot.
 3. Lancer le bot :
+
    ```bash
    python arb_eur_bot_class.py
    ```
