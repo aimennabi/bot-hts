@@ -216,6 +216,9 @@ class ArbBot:
             return
         profit_pct = profit / amount_eur
 
+        logging.info("After simulation profite %s => EAUR OUT :  %s EUR",
+                         eur_out, profit_pct, amount_eur)
+
         # Seuils (net + absolu)
         if profit_pct < MIN_PROFIT_PCT:
             return
