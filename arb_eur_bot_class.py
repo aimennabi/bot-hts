@@ -15,7 +15,7 @@ from binance.exceptions import BinanceAPIException
 TAKER_FEE = Decimal(os.getenv("TAKER_FEE", "0.00095"))          # 0.1% par ordre (market = taker)
 NOTIONAL_MARGIN = Decimal(os.getenv("NOTIONAL_MARGIN", "1.02"))  # +2% marge vs minNotional
 BALANCE_BUFFER = Decimal(os.getenv("BALANCE_BUFFER", "0.97"))     # n’utiliser qu’~98% du solde réel
-MIN_PROFIT_PCT = Decimal(os.getenv("MIN_PROFIT_PCT", "0.01"))    # seuil % net (~1%)
+MIN_PROFIT_PCT = Decimal(os.getenv("MIN_PROFIT_PCT", "0.007"))    # seuil % net (~1%)
 DECIMAL_PRECISION = int(os.getenv("DECIMAL_PRECISION", "8"))
 
 
