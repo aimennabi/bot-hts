@@ -16,7 +16,6 @@ TAKER_FEE = Decimal(os.getenv("TAKER_FEE", "0.001"))          # 0.1% par ordre (
 NOTIONAL_MARGIN = Decimal(os.getenv("NOTIONAL_MARGIN", "1.02"))  # +2% marge vs minNotional
 BALANCE_BUFFER = Decimal(os.getenv("BALANCE_BUFFER", "0.97"))     # n’utiliser qu’~98% du solde réel
 MIN_PROFIT_PCT = Decimal(os.getenv("MIN_PROFIT_PCT", "0.01"))    # seuil % net (~1%)
-MIN_ABS_PROFIT_EUR = Decimal(os.getenv("MIN_ABS_PROFIT_EUR", "0.01"))  # min profit absolu en EUR
 DECIMAL_PRECISION = int(os.getenv("DECIMAL_PRECISION", "8"))
 
 
@@ -218,7 +217,7 @@ class ArbBot:
         profit_pct = profit / amount_eur
 
         # Seuils (net + absolu)
-        if profit_pct < MIN_PROFIT_PCT or profit < MIN_ABS_PROFIT_EUR:
+        if profit_pct < MIN_PROFIT_PCT:
             return
 
         # Vérif minNotional basique (théorique) avant de tenter
