@@ -212,12 +212,14 @@ class ArbBot:
         # Simulation du profit net (avec frais)
         eur_out, details = self._simulate_cycle_net(amount_eur, cycle)
         profit = eur_out - amount_eur
+
+        logging.info("After simulation profite %s => EUR OUT :  %s EUR",
+                         (profit / amount_eur), eur_out)
         if profit <= 0:
             return
         profit_pct = profit / amount_eur
 
-        logging.info("After simulation profite %s => EAUR OUT :  %s EUR",
-                         eur_out, profit_pct, amount_eur)
+        
 
         # Seuils (net + absolu)
         if profit_pct < MIN_PROFIT_PCT:
